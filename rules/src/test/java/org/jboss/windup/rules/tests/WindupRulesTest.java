@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -78,6 +79,10 @@ public class WindupRulesTest
 
     private static final String RUN_TEST_MATCHING = "runTestsMatching";
     private static final String RUN_TEST_ID_MATCHING = "runTestIdMatching";
+    public static final String MULTIPLE_STANDALONE_TEST_APPLICATIONS_MARKER = "/*";
+    public static final String RULES_REVIEWED_FOLDER = "rules-reviewed";
+    public static final String RULES_GENERATED_FOLDER = "rules-generated";
+    public static final String RULES_OVERRIDDEN_AZURE_FOLDER = "rules-overridden-azure";
 
     @Deployment
     @AddonDependencies({
@@ -87,7 +92,9 @@ public class WindupRulesTest
                 @AddonDependency(name = "org.jboss.windup.rules.apps:windup-rules-java-ee"),
                 @AddonDependency(name = "org.jboss.windup.rules.apps:windup-rules-java-project"),
                 @AddonDependency(name = "org.jboss.windup.rules.apps:windup-rules-xml"),
+                @AddonDependency(name = "org.jboss.windup.rules.apps:windup-rules-yaml"),
                 @AddonDependency(name = "org.jboss.windup.reporting:windup-reporting"),
+                @AddonDependency(name = "org.jboss.windup.reporting:windup-reporting-data"),
                 @AddonDependency(name = "org.jboss.windup.utils:windup-utils"),
                 @AddonDependency(name = "org.jboss.forge.furnace.container:cdi")
     })
@@ -117,9 +124,9 @@ public class WindupRulesTest
 
         FileSuffixPredicate predicate = new FileSuffixPredicate("\\.(windup|rhamt|mta)\\.test\\.xml");
         Arrays.asList(
-                new File("rules"),
-                new File("rules-reviewed"),
-                new File("rules-generated")
+                new File(RULES_REVIEWED_FOLDER),
+                new File(RULES_GENERATED_FOLDER),
+                new File(RULES_OVERRIDDEN_AZURE_FOLDER)
         ).forEach(directory ->
                 {
                     Visitor<File> visitor = new RuleTestVisitor(successes, errors, directory);
@@ -180,11 +187,11 @@ public class WindupRulesTest
             try
             {
                 Map<String, Exception> exceptions;
-                Path outputPath = getDefaultPath();
+                // load the ruletest file
+                final RuleTest ruleTest = parser.processDocument(ruleTestFile.toURI());
+                Path outputPath = getDefaultPath(ruleTest.getId());
                 try (GraphContext context = factory.create(outputPath, true))
                 {
-                    // load the ruletest file
-                    RuleTest ruleTest = parser.processDocument(ruleTestFile.toURI());
                     List<Path> rulePaths = new ArrayList<>();
                     if (ruleTest.getRulePaths().isEmpty())
                     {
@@ -309,27 +316,29 @@ public class WindupRulesTest
         return evaluationContext;
     }
 
-    private Path getDefaultPath()
+    private Path getDefaultPath(String rulesetId)
     {
-        return FileUtils.getTempDirectory().toPath().resolve("WindupRulesTests").resolve("windupgraph_" + RandomStringUtils.randomAlphanumeric(6));
+        return FileUtils.getTempDirectory().toPath().resolve("WindupRulesTests").resolve("windupgraph_" + rulesetId + "_" + RandomStringUtils.randomAlphanumeric(6));
     }
 
     private void runWindup(GraphContext context, File baseRuleDirectory, final List<Path> rulePaths, File input, File output, boolean sourceMode, String source, String target) throws IOException
     {
-        ProjectModel pm = context.getFramed().addFramedVertex(ProjectModel.class);
-        pm.setName("Project: " + input.getAbsolutePath());
-        FileModel inputPath = context.getFramed().addFramedVertex(FileModel.class);
-        inputPath.setFilePath(input.getCanonicalPath());
-
         FileUtils.deleteDirectory(output);
         Files.createDirectories(output.toPath());
 
-        pm.setRootFileModel(inputPath);
-        WindupConfiguration windupConfiguration = new WindupConfiguration()
+        final WindupConfiguration windupConfiguration = new WindupConfiguration()
                     .setGraphContext(context);
-        windupConfiguration.addInputPath(Paths.get(inputPath.getFilePath()));
+        final String inputAbsolutePath = input.getAbsolutePath();
+        if (inputAbsolutePath.endsWith(MULTIPLE_STANDALONE_TEST_APPLICATIONS_MARKER)) {
+            try (Stream<Path> stream = Files.list(Paths.get(inputAbsolutePath.substring(0, inputAbsolutePath.indexOf(MULTIPLE_STANDALONE_TEST_APPLICATIONS_MARKER))))) {
+                stream.forEach(windupConfiguration::addInputPath);
+            }
+        } else {
+            windupConfiguration.addInputPath(Paths.get(inputAbsolutePath));
+        }
         windupConfiguration.setOutputDirectory(output.toPath());
         windupConfiguration.addDefaultUserRulesDirectory(baseRuleDirectory.toPath());
+        if (RULES_OVERRIDDEN_AZURE_FOLDER.equals(baseRuleDirectory.toString())) windupConfiguration.addDefaultUserRulesDirectory(new File(RULES_REVIEWED_FOLDER).toPath());
         windupConfiguration.setOptionValue(SourceModeOption.NAME, sourceMode);
         windupConfiguration.setOnline(false);
         if (StringUtils.isNotBlank(source))

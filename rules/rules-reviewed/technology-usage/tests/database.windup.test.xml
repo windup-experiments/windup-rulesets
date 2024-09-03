@@ -7,7 +7,7 @@
           xsi:schemaLocation="http://windup.jboss.org/schema/jboss-ruleset http://windup.jboss.org/schema/jboss-ruleset/windup-jboss-ruleset.xsd">
 
     <testDataPath>data/database</testDataPath>
-    <rulePath>../database.windup.xml</rulePath>
+    <rulePath>../database.windup.groovy</rulePath>
    <ruleset>
       <rules>
          <rule id="database-01400-test">
@@ -186,7 +186,7 @@
                <fail message="Expected data not found for rule database-02900"/>
             </perform>
          </rule>
-         <rule id="database-03100-test">
+         <rule id="database-03000-test">
             <when>
                <not>
                   <classification-exists classification="Embedded Apache Accumulo Client"/>
@@ -194,10 +194,10 @@
                </not>
             </when>
             <perform>
-               <fail message="Expected data not found for rule database-03100"/>
+               <fail message="Expected data not found for rule database-03000"/>
             </perform>
          </rule>
-         <rule id="database-03200-test">
+         <rule id="database-03100-test">
             <when>
                <not>
                   <classification-exists classification="Embedded Spring Data JPA"/>
@@ -205,9 +205,20 @@
                </not>
             </when>
             <perform>
-               <fail message="Expected data not found for rule database-03200"/>
+               <fail message="Expected data not found for rule database-03100"/>
             </perform>
          </rule>
+          <rule id="database-03200-test">
+              <when>
+                  <not>
+                      <classification-exists classification="Embedded MariaDB Driver"/>
+                      <technology-tag-exists technology-tag="MariaDB Driver"/>
+                  </not>
+              </when>
+              <perform>
+                  <fail message="Expected data not found for rule database-03200"/>
+              </perform>
+          </rule>
       </rules>
    </ruleset>
 </ruletest>

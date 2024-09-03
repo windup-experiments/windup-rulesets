@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jboss.windup.rules</groupId>
         <artifactId>windup-rulesets-parent</artifactId>
-        <version>6.2.0-SNAPSHOT</version>
+        <version>6.4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>windup-rulesets</artifactId>
@@ -66,6 +66,18 @@
         <dependency>
             <groupId>org.jboss.windup.rules.apps</groupId>
             <artifactId>windup-rules-java-project</artifactId>
+            <classifier>forge-addon</classifier>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.windup.rules.apps</groupId>
+            <artifactId>windup-rules-yaml</artifactId>
+            <classifier>forge-addon</classifier>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.windup.reporting</groupId>
+            <artifactId>windup-reporting-data</artifactId>
             <classifier>forge-addon</classifier>
             <scope>provided</scope>
         </dependency>
@@ -159,7 +171,7 @@
                 <jdk>[9,)</jdk>
             </activation>
             <properties>
-                <arguments>-Xms512m -Xmx4096m -XX:ReservedCodeCacheSize=128m --add-modules java.se</arguments>
+                <arguments>-Xms1024m -Xmx8192m -XX:ReservedCodeCacheSize=128m --add-modules java.se</arguments>
             </properties>
         </profile>
 
@@ -241,7 +253,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                            <argLine>@{arguments} --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -259,6 +271,10 @@
             <resource>
                 <filtering>false</filtering>
                 <directory>rules-generated</directory>
+            </resource>
+            <resource>
+                <filtering>false</filtering>
+                <directory>rules-overridden-azure</directory>
             </resource>
         </resources>
 
@@ -293,7 +309,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>xml-maven-plugin</artifactId>
-                <version>1.0</version>
+                <version>1.1.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -318,6 +334,14 @@
                                 <include>**/*.windup.test.xml</include>
                             </includes>
                             <dir>rules-generated</dir>
+                            <systemId>${project.build.directory}/xsd/schema/windup-jboss-ruleset.xsd</systemId>
+                        </validationSet>
+                        <validationSet>
+                            <includes>
+                                <include>**/*.windup.xml</include>
+                                <include>**/*.windup.test.xml</include>
+                            </includes>
+                            <dir>rules-overridden-azure</dir>
                             <systemId>${project.build.directory}/xsd/schema/windup-jboss-ruleset.xsd</systemId>
                         </validationSet>
                     </validationSets>
@@ -354,6 +378,7 @@
                      <include>eap6/api-jars/*.jar</include>
                      <include>eap7/api-jars/*.jar</include>
                      <include>openjdk11/api-jars/*.jar</include>
+                     <include>quarkus/api-jars/*.jar</include>
                      <include>**/*.xsl</include>
                       <include>**/rewrite.yml</include>
                   </includes>
